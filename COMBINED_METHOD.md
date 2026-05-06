@@ -97,7 +97,8 @@ the algorithm restricts forward steps to a subset `J_x` of variable indices:
 ```
 j_x = max { j ∈ 1..n : x[j] ≠ 0 }              (2.3)
 
-J_x = { j ∈ 1..n : j ≥ j_x }                    (2.2)
+J_x = { j ∈ 1..n : j ≥ j_x }                   (2.2)
+
        — and j = j_x is included in J_x only if x[j_x] < h[j_x]
 ```
 
@@ -110,7 +111,7 @@ Required for the lattice search to terminate. For any `j` with `c[j] < 0`,
 substitute
 
 ```
-x[j]  =  h[j] − x'[j]                          (2.4)
+x[j]  =  h[j] − x'[j]                         (2.4)
 ```
 
 throughout the objective and **all** constraints. This makes
@@ -146,7 +147,7 @@ Applied at every newly entered point.
 
 ```
 I_x   = { i : y_x[i] < 0 }                                     (2.7)
-J^x_i = { j ∈ J_x : a[i,j] < 0 }                                (2.8)
+J^x_i = { j ∈ J_x : a[i,j] < 0 }                               (2.8)
 ```
 
 `I_x` is the set of currently-violated rows; `J^x_i` is the set of forward
@@ -156,7 +157,7 @@ steps that *help* row `i` (one step on `j ∈ J^x_i` increases `y[i]` by
 **КН fires** at `x` iff there exists `i ∈ I_x` with
 
 ```
-Σ_{j ∈ J^x_i}  a[i,j] · (h[j] − x[j])   >   y_x[i]              (2.9)
+Σ_{j ∈ J^x_i}  a[i,j] · (h[j] − x[j])   >   y_x[i]             (2.9)
 ```
 
 Both sides are negative. The LHS is the most negative thing that the
@@ -459,7 +460,7 @@ i.e. `−`(value returned by (2.19)'s simplex). It is a lower bound on
 `Z_opt^p`, so `δ̂_Z` upper-bounds the true relative gap.) If
 
 ```
-δ̂_Z  ≤  δ_Z                                                       (2.28)
+δ̂_Z  ≤  δ_Z                                                     (2.28)
 ```
 
 accept `x̃_D^p` and jump to Stage 5 with `x_opt^p := x̃_D^p`.
@@ -484,7 +485,7 @@ recipe (§2.3.1):
 
 ```
 m̃ = m + 1                  one new row
-ñ = n^l + 1                 one new variable (filter slack y[0])
+ñ = n^l + 1                one new variable (filter slack y[0])
 
 b̃^l   =  ( b^l, z̃_D^p )^T                          (RHS)
 h̃^l   =  ( h^l, ∞ )^T                              (upper bounds)
@@ -499,15 +500,15 @@ h̃^l   =  ( h^l, ∞ )^T                              (upper bounds)
 Ñ(B)  =  N(B_opt^l) ∪ {ñ}        (extended basis index set)
 
 B̃^{-1}  =  ┌  B^{-1}      | 0 ┐
-            │  d_m̃        | 1 │
-            └                  ┘
+           │  d_m̃         | 1 │
+           └                  ┘
         where  d_m̃[i] = − Σ_{i'=1..m}  c^p[ j_{i'} ] · (B^{-1})[i', i]
-                       — equivalently, d_m̃ = − c_B(B_opt^l) · B^{-1}
-                       — j_{i'} are the basis indices of B_opt^l.
+                        — equivalently, d_m̃ = − c_B(B_opt^l) · B^{-1}
+                        — j_{i'} are the basis indices of B_opt^l.
 
 basic-solution vector  b̃(B,N)
         =  ( b(B_opt^l, N_opt^l),   z̃_D^p − c^p · x_opt^l[1..n] )^T
-                                  └────────── filter slack at the LP optimum
+                                    └────────── filter slack at the LP optimum
 ```
 
 The filter row does **not** cut `x_opt^l` (because `c^p · x_opt^l[1..n] =
@@ -555,9 +556,9 @@ N(B_1)   = Ñ(B)                          initial basis = augmented basis
 N_1      = N_opt^l                       initial upper-bound set
 m_1      = m̃                             rows
 n_1      = ñ                             cols
-A̅        = Ã^l                            constraint matrix (filter included)
-b̅        = b̃^l                            RHS
-h̅        = h̃^l                            upper bounds
+A̅        = Ã^l                           constraint matrix (filter included)
+b̅        = b̃^l                           RHS
+h̅        = h̃^l                           upper bounds
 c̅        = (0, …, 0, −1 at position j, 0, …, 0)         ← objective: −x[j]
                                                           (so simplex maximises
                                                           and the optimum is
@@ -580,7 +581,7 @@ The entry of `b̃(B,N)` corresponding to the new row obeys
 
 ```
 b̃(B,N)[m̃+1]  =  b(B_opt^l, N_opt^l)[ j_i ]   if  j = j_i ∈ N(B_opt^l)
-              =  (other case)                  if  j ∈ N_opt^l
+             =  (other case)                 if  j ∈ N_opt^l
 ```
 
 Run primal/dual simplex on this LP starting from the warm state. Per the
@@ -604,7 +605,7 @@ Run the lattice enumerator (§2) on
 ```
 min  c^p · x^p
 s.t. x^p ∈ D^p
-     x_min[j]  ≤  x^p[j]  ≤  h^p[j]                                (2.36)
+     x_min[j]  ≤  x^p[j]  ≤  h^p[j]                               (2.36)
      x^p ∈ N^n
 with the strict filter
      c^p · x^p  <  z̃_D^p                                          (2.29)
