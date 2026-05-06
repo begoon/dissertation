@@ -20,7 +20,7 @@ and a written-up account of every finding along the way.
 * On the dissertation's headline 153-variable LAN-Variant-B
   instance: vanilla finds a 9 %-suboptimal feasible (350 vs.
   optimum 320) within 20 s; with a Stage-2 heuristic seed the same
-  instance finishes in 13   with the optimum 320. The dissertation
+  instance finishes in 13 s with the optimum 320. The dissertation
   reports 6 hours / 10 minutes for the same instance on a Pentium-200,
   which is consistent — the per-node Python overhead is ~50× the
   dissertation's hand-coded C++.
