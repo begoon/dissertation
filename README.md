@@ -629,7 +629,7 @@ uv run python tests/test_transforms.py
 
 # Run the benchmark
 uv run python scripts/bench.py --node-limit 500000 --include-large \
-                                --json bench-full.json
+                               --json bench-full.json
 ```
 
 ## 12. Evaluation
