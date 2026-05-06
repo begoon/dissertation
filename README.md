@@ -49,7 +49,7 @@ The repository contains three layers, each useful on its own:
   enumerator, and the canonical-form transforms; plus task builders
   for the LAN instances and a CLI.
 
-```
+```text
 .
 ├── source/                    ← all dissertation extraction artefacts
 │   ├── source.doc             ← original 154-page Word document
@@ -115,7 +115,7 @@ error in successive simplex passes after each cut/branch. The
 | 3 | Add a single filter row `c·x ≤ z̃` to the LP and find the integer corner `x_min` of the better-than-z̃ region. | One LP per "active" variable; warm-started from saved tableau |
 | 4 | Strict-filter lattice enumeration in `[x_min, h]` to either improve or prove `z̃` optimal. | Vector-lattice enumeration with `c·x < z̃` enforced |
 
-```
+```text
                   +-- Stage 1 ----------+
         c, A, b -->|  LP relaxation     |-->  Z_LP    (lower bound)
                   |  (bounded simplex)  |     x_LP    (LP corner, possibly fractional)
