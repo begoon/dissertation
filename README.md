@@ -1,6 +1,6 @@
 # Combined Method for ILP — Reimplementation, Analysis, Benchmarks
 
-A working Python reimplementation of А.Ю. Дёмин's «Комбинированный
+A working Python implementation of А.Ю. Дёмин's «Комбинированный
 метод» (МАИ 2002) for solving linear integer programs, with the
 LAN-topology task from Chapter 4 of the dissertation as the headline
 example, plus a full benchmark sweep against `scipy.optimize.milp`
@@ -110,31 +110,34 @@ error in successive simplex passes after each cut/branch. The
 | 4 | Strict-filter lattice enumeration in `[x_min, h]` to either improve or prove `z̃` optimal. | Vector-lattice enumeration with `c·x < z̃` enforced |
 
 ```
-                   ┌──── Stage 1 ────┐
-        c, A, b   →│   LP relax       │→  z*_LP   (lower bound)
-                   │   simplex        │   x*_LP  (corner)
-                   └────────┬─────────┘
-                            ↓ ⌊x*_LP⌋ = x_min^p
-                   ┌──── Stage 2 ────────┐
-                   │  lattice search in  │
-                   │    [x_min^p, h]     │→  z̃,  x̃   (sub-optimum)
-                   │  + trivial improve  │   ↘
-                   │  (heuristic plug-in)│   eps gate?
-                   └────────┬────────────┘   accept → done
-                            ↓
-                   ┌──── Stage 3 ────────┐
-                   │  add filter row     │
-                   │  c·x ≤ z̃ to LP      │→  x_min   (start corner)
-                   │  per-var min LPs    │
-                   │  (warm-started)     │
-                   └────────┬────────────┘
-                            ↓ box [x_min, h]
-                   ┌──── Stage 4 ─────────┐
-                   │  strict-filter       │
-                   │  lattice search:     │→ improvement → x*
-                   │    c·x < z̃          │  no improvement → x̃ optimal
-                   │  in [x_min, h]       │
-                   └──────────────────────┘
+                  +-- Stage 1 ----------+
+        c, A, b -->|  LP relaxation     |-->  Z_LP    (lower bound)
+                  |  (bounded simplex)  |     x_LP    (LP corner, possibly fractional)
+                  +----------+----------+
+                             |   x_min^p := floor(x_LP)
+                             v
+                  +-- Stage 2 ----------+
+                  |  lattice search     |
+                  |  in [x_min^p, h]    |-->  z~, x~  (sub-optimum, integer)
+                  |  + trivial improve  |        \
+                  |  (heuristic plug-in)|         '--> eps gate? accept --> done
+                  +----------+----------+
+                             |
+                             v
+                  +-- Stage 3 ----------+
+                  |  add filter row     |
+                  |  c.x <= z~ to LP    |-->  x_min   (start corner of stage-4 box)
+                  |  per-var min LPs    |
+                  |  (warm-started)     |
+                  +----------+----------+
+                             |   box [x_min, h]
+                             v
+                  +-- Stage 4 ----------+
+                  |  strict-filter      |
+                  |  lattice search     |--> improvement found  --> x*
+                  |    c.x < z~         |--> no improvement     --> x~ was optimal
+                  |  in [x_min, h]      |
+                  +---------------------+
 ```
 
 The "lattice search" used in Stages 2 and 4 is itself a complete
@@ -163,7 +166,7 @@ of the dissertation, is in **`COMBINED_METHOD.md`**.
 ## 2. The two LAN-topology tasks
 
 * **Variant A** (§1.1.1, §4.1): two hub types, direct connection.
-  `n=18` rooms, two hub stocks (`K[1]=3`, `K[2]=5`), one with stacking.
+  `n=18` rooms, two hub-type supplies (`K[1]=3`, `K[2]=5`), only type-1 stackable.
   Decision variables: `x[i,j]` (user cables i→j), `y[t,i]` (hubs by
   type/room), `w[i]` (Boolean: any type-1 hub at i?). Reported result:
   optimum = 615, sub-optimum = 705 (14.6 % gap), 5h 40m without
@@ -627,7 +630,7 @@ uv run python scripts/bench.py --node-limit 500000 --include-large \
 
 * The Combined Method *as an algorithm* is sound, with one small
   inequality-direction error in the dissertation's Stage 4 skip
-  rule (§7.2 above) and three minor tableau-formula gaps from the
+  rule (§7 item 2 above) and three minor tableau-formula gaps from the
   OLE equation export (§8).
 * The vanilla pipeline returns the true integer optimum on every
   test problem we ran from 2 to 50 variables. КПП is load-bearing —
