@@ -202,10 +202,10 @@ applies directly.
 
 Runs on a Pentium-200 MMX:
 
-| Run                       | Wall time | Stage-2 sub-opt | True optimum |
-|---------------------------|-----------|-----------------|--------------|
-| Combined Method, no heur  | 5h 40min  | 705             | 615          |
-| Combined Method, w/ heur  | 10 min    | 705             | 615          |
+| Run                         | Wall time   | Stage-2 sub-opt   | True optimum   |
+| --------------------------- | ----------- | ----------------- | -------------- |
+| Combined Method, no heur    | 5h 40min    | 705               | 615            |
+| Combined Method, w/ heur    | 10 min      | 705               | 615            |
 
 * Stage-2 gap to optimum: **14.634 %**.
 * Search volume in Stage 2: **0.08 %** of full enumeration.
@@ -371,14 +371,14 @@ heuristic is reported for Variant B.
 
 Run on Pentium-200 MMX:
 
-| Stat                                    | Value     |
-|-----------------------------------------|-----------|
-| Wall time                               | 6 hours   |
-| Stage-2 sub-optimum objective           | 360       |
-| True optimum objective                  | 280       |
-| Stage-2 gap                             | 21.6 %    |
-| Search volume in Stage 2                | 0.006 %   |
-| Search volume in Stage 4                | 0.002 %   |
+| Stat                                      | Value       |
+| ----------------------------------------- | ----------- |
+| Wall time                                 | 6 hours     |
+| Stage-2 sub-optimum objective             | 360         |
+| True optimum objective                    | 280         |
+| Stage-2 gap                               | 21.6 %      |
+| Search volume in Stage 2                  | 0.006 %     |
+| Search volume in Stage 4                  | 0.002 %     |
 
 МНПВР, B&B, and cutting-plane all failed to finish on this instance
 within the test budget.

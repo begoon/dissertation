@@ -22,36 +22,36 @@ are load-bearing names you'll see in the original.
 
 ## 0. Notation cheat-sheet
 
-| Symbol | Meaning |
-| --- | --- |
-| `x` | `n`-vector of decision variables (integer in (2.1), (2.17); continuous in (2.19)). Entries `x[j]` |
-| `c` | row-vector of objective coefficients, length `n` |
-| `A` | constraint matrix, `m × n` |
-| `b` | RHS vector, length `m` |
-| `h` | per-variable upper-bound vector, length `n`, integer, finite |
-| `D` | feasible set of (2.1) (the user form) |
-| `^p` superscript | "problem-form" — variant of objects after the canonical rewrite (2.17). Lattice search consumes these |
-| `^l` superscript | "LP-form" — variant for the bounded-variable simplex (2.19) |
+| Symbol                   | Meaning                                                                                                               |
+| ------------------------ | --------------------------------------------------------------------------------------------------------------------- |
+| `x`                      | `n`-vector of decision variables (integer in (2.1), (2.17); continuous in (2.19)). Entries `x[j]`                     |
+| `c`                      | row-vector of objective coefficients, length `n`                                                                      |
+| `A`                      | constraint matrix, `m × n`                                                                                            |
+| `b`                      | RHS vector, length `m`                                                                                                |
+| `h`                      | per-variable upper-bound vector, length `n`, integer, finite                                                          |
+| `D`                      | feasible set of (2.1) (the user form)                                                                                 |
+| `^p` superscript         | "problem-form" — variant of objects after the canonical rewrite (2.17). Lattice search consumes these                 |
+| `^l` superscript         | "LP-form" — variant for the bounded-variable simplex (2.19)                                                           |
 | `x^l = (x_0^l, x_d^l)^T` | LP variables: `x_0^l` are the structural vars (matching `x^p`); `x_d^l` are slacks introduced to make rows equalities |
-| `D^p`, `D^l` | feasible sets of (2.17) and (2.19) |
-| `x_opt^l`, `Z_opt^l` | LP optimum point and objective |
-| `x_opt^p`, `Z_opt^p` | integer optimum of (2.17) |
-| `x_min^p` | floor of `x_opt^l` — Stage-2 search-box upper corner (eq. 2.20) |
-| `x_min` | start corner of the Stage-4 search box (eq. 2.34) |
-| `x_D^p`, `z_D^p` | first feasible found in Stage 2, and its objective |
-| `x̃_D^p`, `z̃_D^p` | improved feasible after Stage-2 sub-step 2.2 |
-| `B_opt^l` | optimal basis of (2.19) |
-| `N(B_opt^l)` | index set of basic variables at LP optimum |
-| `N_opt^l` | index set of variables sitting at their **upper** bound at LP optimum (specific to bounded-variable simplex) |
-| `J_x` | indices of forward steps available from lattice point `x` (eq. 2.2) |
-| `j_x` | "level" of `x`: the largest index `j` with `x[j] ≠ 0` (eq. 2.3) |
-| `y[i]` | slack of the `i`-th main constraint, used inside the lattice search (eq. 2.6) |
-| `y[0]` | slack of the filter constraint (eq. 2.11) |
-| `I_x` | indices of currently-violated rows at `x` (eq. 2.7) |
-| `J^x_i` | forward steps from `x` whose coefficient in row `i` is negative (eq. 2.8) — only these can repair row `i` |
-| `[a]` | floor (целая часть) — used in (2.20) |
-| `]a[` | smallest integer ≥ a (ceiling) — used in (2.34) |
-| КН, КПИА, КПП | the three lattice-search criteria (infeasibility / plan-aware / preferred-variable) |
+| `D^p`, `D^l`             | feasible sets of (2.17) and (2.19)                                                                                    |
+| `x_opt^l`, `Z_opt^l`     | LP optimum point and objective                                                                                        |
+| `x_opt^p`, `Z_opt^p`     | integer optimum of (2.17)                                                                                             |
+| `x_min^p`                | floor of `x_opt^l` — Stage-2 search-box upper corner (eq. 2.20)                                                       |
+| `x_min`                  | start corner of the Stage-4 search box (eq. 2.34)                                                                     |
+| `x_D^p`, `z_D^p`         | first feasible found in Stage 2, and its objective                                                                    |
+| `x̃_D^p`, `z̃_D^p`       | improved feasible after Stage-2 sub-step 2.2                                                                          |
+| `B_opt^l`                | optimal basis of (2.19)                                                                                               |
+| `N(B_opt^l)`             | index set of basic variables at LP optimum                                                                            |
+| `N_opt^l`                | index set of variables sitting at their **upper** bound at LP optimum (specific to bounded-variable simplex)          |
+| `J_x`                    | indices of forward steps available from lattice point `x` (eq. 2.2)                                                   |
+| `j_x`                    | "level" of `x`: the largest index `j` with `x[j] ≠ 0` (eq. 2.3)                                                       |
+| `y[i]`                   | slack of the `i`-th main constraint, used inside the lattice search (eq. 2.6)                                         |
+| `y[0]`                   | slack of the filter constraint (eq. 2.11)                                                                             |
+| `I_x`                    | indices of currently-violated rows at `x` (eq. 2.7)                                                                   |
+| `J^x_i`                  | forward steps from `x` whose coefficient in row `i` is negative (eq. 2.8) — only these can repair row `i`             |
+| `[a]`                    | floor (целая часть) — used in (2.20)                                                                                  |
+| `]a[`                    | smallest integer ≥ a (ceiling) — used in (2.34)                                                                       |
+| КН, КПИА, КПП            | the three lattice-search criteria (infeasibility / plan-aware / preferred-variable)                                   |
 
 ---
 
