@@ -2,7 +2,7 @@ name: test
 
 on:
   push:
-    branches: [main]
+    branches: [ main ]
   pull_request:
   workflow_dispatch:
 
@@ -12,19 +12,14 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - name: install uv
-        uses: astral-sh/setup-uv@v7
+      - uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
 
-      - name: install just
-        uses: extractions/setup-just@v3
+      - uses: extractions/setup-just@v3
 
-      - name: install python
-        run: uv python install 3.13
+      - run: uv python install 3.13
 
-      - name: sync dependencies
-        run: uv sync --group dev
+      - run: uv sync --group dev
 
-      - name: just test
-        run: just test
+      - run: just test

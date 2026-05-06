@@ -632,6 +632,10 @@ uv run python scripts/bench.py --node-limit 500000 --include-large \
                                 --json bench-full.json
 ```
 
+## License
+
+MIT — see [`LICENSE`](LICENSE).
+
 ## 12. Summary
 
 * The Combined Method *as an algorithm* is sound, with one small

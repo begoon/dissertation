@@ -2,6 +2,8 @@
 name = "combined-method"
 version = "0.1.0"
 description = "Reimplementation of A.Y. Demin's combined method for ILP (MAI 2002)."
+license = "MIT"
+license-files = ["LICENSE"]
 requires-python = ">=3.11"
 dependencies = ["numpy>=1.26", "scipy>=1.11"]
 
