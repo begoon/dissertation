@@ -6,6 +6,31 @@ LAN-topology task from Chapter 4 of the dissertation as the headline
 example, plus a full benchmark sweep against `scipy.optimize.milp`
 and a written-up account of every finding along the way.
 
+## TL;DR
+
+* The Combined Method is a four-stage MILP solver: LP relaxation →
+  vector-lattice search for a feasible near the LP corner → add a
+  filter row to the LP, derive a small box → final lattice search
+  with the strict filter to either improve or prove the incumbent
+  optimal.
+* Reimplemented faithfully in pure Python. Verified on every test
+  problem from 2 to 50 variables — pure-vanilla Combined Method
+  returns the true integer optimum (cross-checked against
+  `scipy.optimize.milp` / HiGHS).
+* On the dissertation's headline 153-variable LAN-Variant-B
+  instance: vanilla finds a 9 %-suboptimal feasible (350 vs.
+  optimum 320) within 20 s; with a Stage-2 heuristic seed the same
+  instance finishes in 13 s with the optimum 320. The dissertation
+  reports 6 hours / 10 minutes for the same instance on a Pentium-200,
+  which is consistent — the per-node Python overhead is ~50× the
+  dissertation's hand-coded C++.
+* One sign-error and three OLE-export gaps in the dissertation
+  identified and resolved (§8). The headline z\*=280 figure in
+  §4.2.2 is not reproducible from the rendered task statement
+  alone — we get 320 with both the Combined Method and HiGHS.
+
+## Repository
+
 The repository contains three layers, each useful on its own:
 
 * **The dissertation in extracted form.**
@@ -83,6 +108,46 @@ error in successive simplex passes after each cut/branch. The
 | 2 | Find a sub-optimal feasible **near** the LP corner. | Vector-lattice enumeration in `[⌊x_LP⌋, h]`, optionally seeded by a heuristic |
 | 3 | Add a single filter row `c·x ≤ z̃` to the LP and find the integer corner `x_min` of the better-than-z̃ region. | One LP per "active" variable; warm-started from saved tableau |
 | 4 | Strict-filter lattice enumeration in `[x_min, h]` to either improve or prove `z̃` optimal. | Vector-lattice enumeration with `c·x < z̃` enforced |
+
+```
+                   ┌──── Stage 1 ────┐
+        c, A, b   →│   LP relax       │→  z*_LP   (lower bound)
+                   │   simplex        │   x*_LP  (corner)
+                   └────────┬─────────┘
+                            ↓ ⌊x*_LP⌋ = x_min^p
+                   ┌──── Stage 2 ────────┐
+                   │  lattice search in  │
+                   │    [x_min^p, h]     │→  z̃,  x̃   (sub-optimum)
+                   │  + trivial improve  │   ↘
+                   │  (heuristic plug-in)│   eps gate?
+                   └────────┬────────────┘   accept → done
+                            ↓
+                   ┌──── Stage 3 ────────┐
+                   │  add filter row     │
+                   │  c·x ≤ z̃ to LP      │→  x_min   (start corner)
+                   │  per-var min LPs    │
+                   │  (warm-started)     │
+                   └────────┬────────────┘
+                            ↓ box [x_min, h]
+                   ┌──── Stage 4 ─────────┐
+                   │  strict-filter       │
+                   │  lattice search:     │→ improvement → x*
+                   │    c·x < z̃          │  no improvement → x̃ optimal
+                   │  in [x_min, h]       │
+                   └──────────────────────┘
+```
+
+The "lattice search" used in Stages 2 and 4 is itself a complete
+sub-method (§2.2.2 of the dissertation), with three pruning rules:
+
+* **КН** (eq. 2.9) — infeasibility: prune subtrees where no
+  sequence of forward steps can repair a violated row.
+* **КПИА** (eq. 2.12) — plan-aware: prune steps that would push the
+  objective past the current incumbent.
+* **КПП** (eq. 2.13) — preferred-variable ordering: try forward
+  steps in order of "most help to violated rows first". Heuristic;
+  does not prune on its own but is *load-bearing* in practice
+  because finding the first feasible quickly is what arms КПИА (§6.2).
 
 The dissertation argues this orchestration is **more numerically
 robust** (one filter row added once, no cumulative cuts; no basis
