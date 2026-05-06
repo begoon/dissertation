@@ -149,15 +149,28 @@ heuristics for this instance, and ~10 minutes *with*. A Python
 prototype is 50–100× slower per lattice node than the dissertation's
 hand-rolled C++, so we'd be looking at days to converge from scratch.
 
-What actually happens with vanilla LAN-B:
+What actually happens with vanilla LAN-B (5 M nodes per stage,
+verified):
 
-* Stage 1 (LP) finishes instantly: `z*_LP = 231.84`.
-* Stage 2 finds an initial feasible at `f = 350` within ~30 k nodes,
-  which is sub-optimal but not awful (true optimum 320 per scipy.milp).
-* The lattice search keeps running, КПИА prunes aggressively, but
-  visiting any single node is ~50 µs in Python so a 5 M-node budget
-  is ~5 minutes and the search is still mostly busy proving 350 vs.
-  finding 320.
+```
+Stage 1 (LP)        z*_LP = 231.84      0.004 s
+Stage 2 lattice     5 M nodes:  4.4 M КН-pruned + 10.8 M КПИА-pruned;
+                    1 feasible found at f = 350         72.4 s
+Stage 3             24 per-variable LPs                 0.04 s
+Stage 4 lattice     5 M nodes: 4.9 M КН-pruned + 0.1 M КПИА-pruned
+                    deep into depth ~52 with strict filter f < 350
+                    no improvement found                127 s
+final               objective = 350  (true optimum 320 per scipy)
+total               ~200 s
+```
+
+The search is correctly orchestrated and КПИА is firing aggressively
+(15 M total prunes), but the unpruned subtree at this scale is still
+too large for Python's per-node overhead to drain in 200 s. The
+dissertation reports **6 hours** without heuristics for this instance
+on a Pentium-200 — a Python prototype is roughly 50–100× slower per
+lattice node than the dissertation's hand-rolled C++, so days from
+scratch is the honest expectation.
 
 The MILP heuristic plug-in (per §2.4 of the dissertation, attached via
 `--milp-heuristic`) feeds Stage 2 with a strong incumbent immediately,
