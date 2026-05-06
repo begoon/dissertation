@@ -82,13 +82,17 @@ def combined_method(
     n = can.n_struct
     log_line(
         f"[setup] n={n}, m_p={can.A_p.shape[0]}, m_l={can.A_l.shape[0]}, "
-        f"flipped={int(can.flipped_vars.sum())}"
+        f"flipped={int(can.flipped_vars.sum())}",
     )
 
     # ----- Stage 1 ----- LP relaxation of (2.19), in (2.17) sign
     t = time.perf_counter()
     lp = solve_lp_min(
-        can.c_p, can.A_p_for_lp(), can.b_p_for_lp(), can.sense_for_lp(), can.h_p
+        can.c_p,
+        can.A_p_for_lp(),
+        can.b_p_for_lp(),
+        can.sense_for_lp(),
+        can.h_p,
     )
     s1 = StageStats()
     s1.wall_seconds = time.perf_counter() - t
@@ -151,7 +155,7 @@ def combined_method(
             if x_h is not None and _is_feasible(x_h, can):
                 x_D_p = x_h.astype(np.int64)
                 log_line(
-                    f"[stage2] heuristic produced feasible, c·x = {can.c_p @ x_D_p:.6f}"
+                    f"[stage2] heuristic produced feasible, c·x = {can.c_p @ x_D_p:.6f}",
                 )
         except Exception as e:  # don't let heuristic crashes kill the run
             log_line(f"[stage2] heuristic raised {e!r}; falling back")
@@ -172,7 +176,7 @@ def combined_method(
         _accumulate(s2, st)
         log_line(
             f"[stage2.1.1] lattice nodes={st['nodes']}, "
-            f"kh={st['kh_prunes']}, found={x_D_p is not None}"
+            f"kh={st['kh_prunes']}, found={x_D_p is not None}",
         )
 
     # 2.1.2 — slice expansion if no feasible found yet
@@ -218,7 +222,7 @@ def combined_method(
         _accumulate(s2, st)
         log_line(
             f"[stage2.1.2] expand on j={k} to {new_v}: "
-            f"nodes={st['nodes']}, found={x_slice is not None}"
+            f"nodes={st['nodes']}, found={x_slice is not None}",
         )
 
         # If КН fired at the very first node, this variable cannot be expanded further.
@@ -259,7 +263,7 @@ def combined_method(
                 a = can.A_p[i, j]
                 if a < 0:
                     d_cap = int(
-                        math.floor(y[i] / -a)
+                        math.floor(y[i] / -a),
                     )  # y[i] + d*a ≥ 0 ⇒ d ≤ y[i]/-a
                     if d_cap < d_max:
                         d_max = d_cap
@@ -274,7 +278,7 @@ def combined_method(
             improved = True
     log_line(
         f"[stage2.2] after trivial improvement: z̃ = {z_tilde:.6f} "
-        f"(improvement = {z_D_p - z_tilde:.6f})"
+        f"(improvement = {z_D_p - z_tilde:.6f})",
     )
 
     s2.wall_seconds = time.perf_counter() - t
@@ -301,17 +305,23 @@ def combined_method(
     # Candidate set J = vars not at LP lower bound (≈ 0). For the rest, x_min[j] = 0.
     candidates = [j for j in range(n) if x_opt_l[j] > 1e-7]
     log_line(
-        f"[stage3] solving {len(candidates)} per-variable LPs with filter rhs = {z_tilde:.6f}"
+        f"[stage3] solving {len(candidates)} per-variable LPs with filter rhs = {z_tilde:.6f}",
     )
 
     sense_p = ["<="] * can.A_p.shape[0]
     for j in candidates:
         sub = solve_min_xj_with_filter(
-            can.c_p, j, can.A_p, can.b_p, sense_p, can.h_p, filter_rhs=z_tilde
+            can.c_p,
+            j,
+            can.A_p,
+            can.b_p,
+            sense_p,
+            can.h_p,
+            filter_rhs=z_tilde,
         )
         if sub.status != "optimal":
             log_line(
-                f"[stage3] per-var LP for j={j} status={sub.status}; assuming x_min[j]=0"
+                f"[stage3] per-var LP for j={j} status={sub.status}; assuming x_min[j]=0",
             )
             continue
         x_min[j] = int(math.ceil(sub.x[j] - 1e-7))
@@ -331,13 +341,13 @@ def combined_method(
     # the algorithmically-correct one. We follow the prose.
     if (x_min >= x_min_p).all():
         log_line(
-            "[stage4] x_min ≥ x_min_p ⇒ Stage-4 box ⊂ Stage-2 box; sub-opt is optimum"
+            "[stage4] x_min ≥ x_min_p ⇒ Stage-4 box ⊂ Stage-2 box; sub-opt is optimum",
         )
         x_opt_p = x_tilde
     else:
         if (x_min > can.h_p).any():
             log_line(
-                "[stage4] x_min exceeds h^p ⇒ box empty; sub-opt is optimum"
+                "[stage4] x_min exceeds h^p ⇒ box empty; sub-opt is optimum",
             )
             x_opt_p = x_tilde
         else:
@@ -357,7 +367,7 @@ def combined_method(
             _accumulate(s4, st)
             log_line(
                 f"[stage4] lattice nodes={st['nodes']}, kh={st['kh_prunes']}, "
-                f"kpia={st['kpia_prunes']}, found_better={x_better is not None}"
+                f"kpia={st['kpia_prunes']}, found_better={x_better is not None}",
             )
             if x_better is not None:
                 x_opt_p = x_better
@@ -374,7 +384,7 @@ def combined_method(
     # ----- Stage 5 ----- decode
     z_opt_p = float(can.c_p @ x_opt_p)
     log_line(
-        f"[stage5] z = {z_opt_p:.6f} (status: {res.status if res.status != 'initialising' else 'optimal'})"
+        f"[stage5] z = {z_opt_p:.6f} (status: {res.status if res.status != 'initialising' else 'optimal'})",
     )
     if res.status == "initialising":
         res.status = "optimal"

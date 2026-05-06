@@ -16,7 +16,9 @@ from combined.transforms import Canonical
 
 
 def scipy_milp_heuristic(
-    x_opt_l: np.ndarray, can: Canonical, time_limit: float = 60.0
+    x_opt_l: np.ndarray,
+    can: Canonical,
+    time_limit: float = 60.0,
 ) -> Optional[np.ndarray]:
     """Use scipy.optimize.milp to produce an integer feasible quickly.
 

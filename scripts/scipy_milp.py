@@ -48,13 +48,15 @@ def main() -> int:
     constraints = []
     if A_ub_rows:
         constraints.append(
-            LinearConstraint(np.array(A_ub_rows), -np.inf, np.array(b_ub))
+            LinearConstraint(np.array(A_ub_rows), -np.inf, np.array(b_ub)),
         )
     if A_eq_rows:
         constraints.append(
             LinearConstraint(
-                np.array(A_eq_rows), np.array(b_eq), np.array(b_eq)
-            )
+                np.array(A_eq_rows),
+                np.array(b_eq),
+                np.array(b_eq),
+            ),
         )
 
     bounds = Bounds(np.zeros(p.n), p.h.astype(float))

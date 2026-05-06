@@ -56,10 +56,14 @@ def main(argv: list[str] | None = None) -> int:
         help="relative tolerance %% for early-exit after Stage 2",
     )
     ap.add_argument(
-        "--no-kpp", action="store_true", help="disable КПП ordering"
+        "--no-kpp",
+        action="store_true",
+        help="disable КПП ordering",
     )
     ap.add_argument(
-        "--quiet", action="store_true", help="suppress per-stage log"
+        "--quiet",
+        action="store_true",
+        help="suppress per-stage log",
     )
     ap.add_argument(
         "--node-limit",
@@ -117,7 +121,7 @@ def main(argv: list[str] | None = None) -> int:
         print(
             f"  {name:14s}  nodes={st.nodes:>10d}  kh={st.kh_prunes:>8d}  "
             f"kpia={st.kpia_prunes:>8d}  feas={st.feasibles:>4d}  "
-            f"t={st.wall_seconds:.3f}s"
+            f"t={st.wall_seconds:.3f}s",
         )
 
     return 0 if res.status in ("optimal", "suboptimal_within_eps") else 2

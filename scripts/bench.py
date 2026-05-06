@@ -72,13 +72,15 @@ def run_scipy(p: MILP) -> Run:
     constraints = []
     if A_ub_rows:
         constraints.append(
-            LinearConstraint(np.array(A_ub_rows), -np.inf, np.array(b_ub))
+            LinearConstraint(np.array(A_ub_rows), -np.inf, np.array(b_ub)),
         )
     if A_eq_rows:
         constraints.append(
             LinearConstraint(
-                np.array(A_eq_rows), np.array(b_eq), np.array(b_eq)
-            )
+                np.array(A_eq_rows),
+                np.array(b_eq),
+                np.array(b_eq),
+            ),
         )
     bounds = Bounds(np.zeros(p.n), p.h.astype(float))
     integrality = np.ones(p.n)
@@ -166,10 +168,10 @@ def main() -> int:
 
     print(f"# Benchmark sweep  (node_limit={args.node_limit:,})\n")
     print(
-        "| task | config | n | m | wall | obj | LP bound | nodes | КН | КПИА | status |"
+        "| task | config | n | m | wall | obj | LP bound | nodes | КН | КПИА | status |",
     )
     print(
-        "| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |"
+        "| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |",
     )
 
     from combined.heuristics import scipy_milp_heuristic
