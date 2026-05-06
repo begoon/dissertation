@@ -36,8 +36,9 @@ The repository contains three layers, each useful on its own:
 * **The dissertation in extracted form.**
   `Диссертация.doc` (the original 154-page Russian thesis with
   ~900 OLE-equation objects) was converted via LibreOffice → docx →
-  pandoc → markdown. The resulting `source-pandoc.md` has every
-  formula intact and is the source of truth used by the next layer.
+  pandoc → markdown. The resulting `source/source-pandoc.md` has
+  every formula intact and is the source of truth used by the next
+  layer.
 * **The algorithm specs.** `COMBINED_METHOD.md` is the implementation
   spec for the four-stage method (Chapter 2 of the dissertation),
   with the dissertation's notation preserved verbatim. `LAN_TASK.md`
@@ -50,7 +51,13 @@ The repository contains three layers, each useful on its own:
 
 ```
 .
-├── source.doc, source.docx, source.pdf, source-pandoc.md   ← extracted from .doc
+├── source/                    ← all dissertation extraction artefacts
+│   ├── source.doc             ← original 154-page Word document
+│   ├── source.docx            ← LibreOffice → docx (formulas preserved)
+│   ├── source.pdf             ← LibreOffice → pdf (visual reference)
+│   ├── source-pandoc.md       ← docx → pandoc (text source-of-truth)
+│   ├── source.txt, .html, .rtf  ← textutil exports (formulas dropped)
+│   └── source.doc.png         ← QuickLook thumbnail
 ├── COMBINED_METHOD.md         ← algorithm spec (Chapter 2)
 ├── LAN_TASK.md                ← task spec (Chapter 1 / 4)
 ├── README.md                  ← this file
@@ -615,8 +622,8 @@ does not guarantee.
 
 ```bash
 # Re-render the dissertation source-of-truth markdown
-soffice --headless --convert-to docx Диссертация.doc
-pandoc source.docx -o source-pandoc.md
+soffice --headless --convert-to docx --outdir source source/source.doc
+pandoc source/source.docx -o source/source-pandoc.md
 
 # Run the test suite
 uv run python tests/test_transforms.py
