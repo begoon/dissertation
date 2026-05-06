@@ -56,8 +56,7 @@ The repository contains three layers, each useful on its own:
 │   ├── source.docx            ← LibreOffice → docx (formulas preserved)
 │   ├── source.pdf             ← LibreOffice → pdf (visual reference)
 │   ├── source-pandoc.md       ← docx → pandoc (text source-of-truth)
-│   ├── source.txt, .html, .rtf  ← textutil exports (formulas dropped)
-│   └── source.doc.png         ← QuickLook thumbnail
+│   └── source.txt, .html, .rtf  ← textutil exports (formulas dropped)
 ├── COMBINED_METHOD.md         ← algorithm spec (Chapter 2)
 ├── LAN_TASK.md                ← task spec (Chapter 1 / 4)
 ├── README.md                  ← this file
