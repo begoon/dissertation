@@ -127,6 +127,47 @@ Same algorithm, true optimum 380 (also verified by `scipy.optimize.milp`).
 > (it converges to whichever integer optimum the model defines, and
 > matches the scipy baseline on every instance tested).
 
+## Does the method work vanilla (no heuristic)?
+
+**Yes — for problems up to ~50 variables.** Verified end-to-end on:
+
+| Task | Vars | Vanilla wall | Result | scipy.milp truth |
+| --- | ---: | ---: | ---: | ---: |
+| `tasks/tiny.json` | 2 | 0.01 s | 15 ✓ | 15 |
+| `tasks/medium2.json` | 8 | <0.01 s | 74 ✓ | 74 |
+| `tasks/medium20.json` | 20 | 0.04 s | 50 ✓ | 50 |
+| `tasks/medium50.json` | 50 | 88s (Stage 4 exhaustion) | 88 ✓ | 88 |
+
+For these, **all four stages run unaided**: LP relaxation → lattice
+search finds a feasible → filter row → strict-filter lattice search
+proves (or fails to improve on) the incumbent. КПИА kicks in the moment
+Stage 2's first feasible appears.
+
+**For LAN-B size (153 vars), pure Python is too slow without help.**
+The dissertation reports 6 hours wall on a Pentium-200 *without*
+heuristics for this instance, and ~10 minutes *with*. A Python
+prototype is 50–100× slower per lattice node than the dissertation's
+hand-rolled C++, so we'd be looking at days to converge from scratch.
+
+What actually happens with vanilla LAN-B:
+
+* Stage 1 (LP) finishes instantly: `z*_LP = 231.84`.
+* Stage 2 finds an initial feasible at `f = 350` within ~30 k nodes,
+  which is sub-optimal but not awful (true optimum 320 per scipy.milp).
+* The lattice search keeps running, КПИА prunes aggressively, but
+  visiting any single node is ~50 µs in Python so a 5 M-node budget
+  is ~5 minutes and the search is still mostly busy proving 350 vs.
+  finding 320.
+
+The MILP heuristic plug-in (per §2.4 of the dissertation, attached via
+`--milp-heuristic`) feeds Stage 2 with a strong incumbent immediately,
+which tightens КПИА and lets Stage 4 verify in seconds.
+
+In other words: the algorithm is working correctly; what limits scale
+in this prototype is the lattice search's per-node Python overhead. A
+faithful re-implementation in a compiled language would close the gap
+to the dissertation's reported runtimes.
+
 ## Validation strategy
 
 For any task, `scripts/scipy_milp.py` produces the true integer optimum

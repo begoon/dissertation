@@ -1,0 +1,13 @@
+{
+  "name": "medium",
+  "description": "5-var ILP exercising Stage 2 box expansion + Stage 4 lattice. Hand check via scipy.milp.",
+  "direction": "min",
+  "c":     [3, 5, 4, 7, 2],
+  "A":     [[2, 4, 3, 5, 1],
+            [1, 2, 2, 3, 2],
+            [1, 1, 1, 1, 1]],
+  "b":     [25, 14, 8],
+  "sense": [">=", ">=", "<="],
+  "h":     [6, 6, 6, 6, 6],
+  "var_names": ["x1", "x2", "x3", "x4", "x5"]
+}

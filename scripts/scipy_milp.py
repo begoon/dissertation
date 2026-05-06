@@ -18,12 +18,16 @@ def main() -> int:
     ap.add_argument("--time-limit", type=float, default=120.0)
     args = ap.parse_args()
 
-    spec = importlib.util.spec_from_file_location("task_module", args.task)
-    if spec is None or spec.loader is None:
-        raise RuntimeError(f"cannot import {args.task}")
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    p = module.build()
+    if args.task.suffix == ".json":
+        from solve import _load_json
+        p = _load_json(args.task)
+    else:
+        spec = importlib.util.spec_from_file_location("task_module", args.task)
+        if spec is None or spec.loader is None:
+            raise RuntimeError(f"cannot import {args.task}")
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        p = module.build()
 
     A_ub_rows: list[np.ndarray] = []
     b_ub: list[float] = []
