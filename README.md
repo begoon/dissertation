@@ -503,7 +503,7 @@ constraint that we have not been able to identify.
 
 Typical breakdown for the LAN-B instance (MILP-seeded):
 
-```
+```text
 Stage 1 (LP)              0.004 s    HiGHS LP relaxation, returns z_LP=231.84
 Stage 2 (heuristic)       0.120 s    scipy.optimize.milp returns x_D = 320
 Stage 2.2 (improve)       <0.001 s   no trivial improvement available
