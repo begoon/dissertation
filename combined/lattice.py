@@ -185,8 +185,14 @@ def lattice_search(
 
         # --- recurse ---
         for j in cands:
+            # Re-check КПИА at the moment we are about to descend on j: a
+            # sibling's recursion may have tightened f_best (and therefore
+            # y_filt) since we built `cands`. (2.12) is applied here too, not
+            # just at the once-per-node candidate-building above.
+            if c[j] >= y_filt - 1e-12:
+                stats["kpia_prunes"] += 1
+                continue
             saved_jx = j_x
-            saved_yfilt = y_filt
             x[j] += 1
             y_main -= A[:, j]
             y_filt -= c[j]
@@ -198,8 +204,6 @@ def lattice_search(
             # (possibly new) f_best rather than just undoing the −c[j].
             y_filt = filt.f_best - float(c @ x)
             j_x = saved_jx
-            # Keep `saved_yfilt` linter-quiet: we deliberately recompute instead.
-            del saved_yfilt
             if hit_limit:
                 return True
         return False

@@ -124,9 +124,10 @@ def combined_method(
         log_line("[stage1] LP optimum is integer feasible — done.")
         res.status = "optimal"
         res.x = decode(x_round, can)
-        sign = -1.0 if can.flipped_max_to_min else 1.0
-        # Objective in user form: undo the dropped constant + sign flip.
-        res.objective = sign * (float(p.c @ res.x))
+        # `decode` returns x in user variable order, so dotting with the user's
+        # `c` gives the user's objective directly (in the user's min/max sense
+        # — both the max→min flip and the (2.18) substitution were internal).
+        res.objective = float(p.c @ res.x)
         return res
 
     # x_min^p (eq. 2.20): floor of LP optimum, clipped to bounds
@@ -289,8 +290,7 @@ def combined_method(
             log_line("[stage2.3] within tolerance — accepting sub-optimum")
             res.status = "suboptimal_within_eps"
             res.x = decode(x_tilde, can)
-            sign = -1.0 if can.flipped_max_to_min else 1.0
-            res.objective = sign * float(p.c @ res.x)
+            res.objective = float(p.c @ res.x)
             return res
 
     # ----- Stage 3 ----- compute integer corner x_min for Stage-4 box
@@ -379,8 +379,7 @@ def combined_method(
     if res.status == "initialising":
         res.status = "optimal"
     res.x = decode(x_opt_p, can)
-    sign = -1.0 if can.flipped_max_to_min else 1.0
-    res.objective = sign * float(p.c @ res.x)
+    res.objective = float(p.c @ res.x)
 
     if verbose:
         for line in log:
