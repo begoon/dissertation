@@ -1,0 +1,11 @@
+{
+  "name": "tiny",
+  "description": "min 3x1 + 5x2 s.t. 2x1 + 4x2 >= 11, 0 <= x <= 5, integer. Optimum (0,3) z=15.",
+  "direction": "min",
+  "c":     [3, 5],
+  "A":     [[2, 4]],
+  "b":     [11],
+  "sense": [">="],
+  "h":     [5, 5],
+  "var_names": ["x1", "x2"]
+}

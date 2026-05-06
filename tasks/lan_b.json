@@ -1,0 +1,21 @@
+{
+  "name": "LAN_topology_B",
+  "description": "Variant B: uniform hubs, indirect connection (РКК Энергия instance). §1.1.2 / §4.2 of dissertation. Reported optimum: 280; suboptimum: 360.",
+  "rooms": 9,
+  "central_commutator": 1,
+  "users_per_room":  [0, 15, 16, 3, 9, 10, 20, 15, 10],
+  "hub_cost":        20,
+  "ports_per_hub":   8,
+  "_comment_costs":  "0 OFF-DIAGONAL means no cable possible (∞). Diagonal is 0 by convention.",
+  "cable_costs": [
+    [0, 10, 20, 30, 10, 10, 70,  0, 10],
+    [10, 0, 20, 40,  0, 20, 10, 20, 40],
+    [20, 20, 0, 10, 30, 40,  0, 30, 15],
+    [30, 40, 10, 0, 10, 10, 10,  0,  0],
+    [10,  0, 30, 10, 0,  0, 20,  0, 20],
+    [10, 20, 40, 10, 0,  0, 30,  0, 10],
+    [70, 10,  0, 10, 20, 30,  0, 10, 20],
+    [ 0, 20, 30,  0, 0,  0, 10,  0, 30],
+    [10, 40, 15, 20, 20, 10, 20, 30,  0]
+  ]
+}

@@ -1,1 +1,6 @@
 *.doc
+__pycache__/
+.venv/
+*.egg-info/
+uv.lock
+.pytest_cache/
