@@ -168,7 +168,7 @@ def main() -> int:
 
     print(f"# Benchmark sweep  (node_limit={args.node_limit:,})\n")
     print(
-        "| task | config | n | m | wall | obj | LP bound | nodes | КН | КПИА | status |",
+        "| task | config | n | m | wall/s | obj | LP bound | nodes | КН | КПИА | status |",
     )
     print(
         "| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |",
@@ -198,7 +198,7 @@ def main() -> int:
             lp_str = f"{r.z_lp:.2f}" if r.z_lp is not None else "—"
             print(
                 f"| {r.task} | {r.config} | {r.n} | {r.m} | "
-                f"{r.wall:>7.3f}s | {obj_str} | {lp_str} | "
+                f"{r.wall:>7.3f} | {obj_str} | {lp_str} | "
                 f"{r.nodes_total:,} | {r.kh_prunes:,} | {r.kpia_prunes:,} | "
                 f"{r.status} |",
                 flush=True,
