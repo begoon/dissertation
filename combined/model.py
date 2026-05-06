@@ -23,11 +23,11 @@ class MILP:
              x ∈ Z^n_+
     """
 
-    c: np.ndarray              # shape (n,)
-    A: np.ndarray              # shape (m, n)
-    b: np.ndarray              # shape (m,)
-    sense: list[Sense]         # length m
-    h: np.ndarray              # shape (n,) integer
+    c: np.ndarray  # shape (n,)
+    A: np.ndarray  # shape (m, n)
+    b: np.ndarray  # shape (m,)
+    sense: list[Sense]  # length m
+    h: np.ndarray  # shape (n,) integer
     direction: Literal["min", "max"] = "min"
     var_names: list[str] = field(default_factory=list)
 

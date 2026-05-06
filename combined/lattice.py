@@ -33,8 +33,8 @@ class Box:
 
     low: np.ndarray
     high: np.ndarray
-    fixed_var: int = -1                        # -1 ⇒ no fix
-    fixed_val: int = 0                         # used only when fixed_var ≥ 0
+    fixed_var: int = -1  # -1 ⇒ no fix
+    fixed_val: int = 0  # used only when fixed_var ≥ 0
 
     def __post_init__(self) -> None:
         self.low = np.asarray(self.low, dtype=np.int64)
@@ -66,31 +66,34 @@ def lattice_search(
     filt: Optional[Filter] = None,
     use_kpp: bool = True,
     node_limit: Optional[int] = None,
-    progress_every: Optional[int] = None,        # if set, print "nodes=N best=..." every N nodes
+    progress_every: Optional[int] = None,
     progress_label: str = "lattice",
 ) -> tuple[Optional[np.ndarray], dict]:
     """Find argmin c·x over { x ∈ Z^n : A x ≤ b, box, c·x < filt.f_best }.
 
     Returns (x_best, stats). x_best is None if no feasible found within
     node_limit (or at all when node_limit is None).
+
+    progress_every  if set, print "nodes=N best=..." every N nodes to stdout.
+    progress_label  label used in those progress lines.
     """
     n = box.low.shape[0]
     assert A.shape[1] == n and b.shape == (A.shape[0],) and c.shape == (n,)
     assert (c >= -1e-12).all(), "c must be non-negative; canonicalise first"
 
     x = _initial_x(box)
-    y_main = b - A @ x                         # row slacks; feasible iff y_main >= 0
+    y_main = b - A @ x  # row slacks; feasible iff y_main >= 0
 
     # Always run with a filter, even if the caller didn't provide one. This
     # lets КПИА kick in as soon as Stage 2's first feasible is found.
     if filt is None:
         filt = Filter(c=c.copy(), f_best=float("inf"))
-        strict = False                         # filter starts at +inf — non-strict during Stage 2
+        strict = False  # filter starts at +inf — non-strict during Stage 2
     else:
-        strict = True                          # caller-supplied filter is strict (Stage 4)
+        strict = True  # caller-supplied filter is strict (Stage 4)
 
     f_best = filt.f_best
-    y_filt = f_best - float(c @ x)             # may be +inf at the start
+    y_filt = f_best - float(c @ x)  # may be +inf at the start
 
     best_x: Optional[np.ndarray] = None
     stats = {"nodes": 0, "kh_prunes": 0, "kpia_prunes": 0, "feasibles": 0}
@@ -115,10 +118,12 @@ def lattice_search(
 
         stats["nodes"] += 1
         if progress_every is not None and stats["nodes"] % progress_every == 0:
-            print(f"[{progress_label}] nodes={stats['nodes']:,} "
-                  f"kh={stats['kh_prunes']:,} kpia={stats['kpia_prunes']:,} "
-                  f"feas={stats['feasibles']} best_f={f_best:.6f} depth={int((x > box.low).sum())}",
-                  flush=True)
+            print(
+                f"[{progress_label}] nodes={stats['nodes']:,} "
+                f"kh={stats['kh_prunes']:,} kpia={stats['kpia_prunes']:,} "
+                f"feas={stats['feasibles']} best_f={f_best:.6f} depth={int((x > box.low).sum())}",
+                flush=True,
+            )
         if node_limit is not None and stats["nodes"] > node_limit:
             return True
 
@@ -147,9 +152,9 @@ def lattice_search(
             room = (box.high - x).astype(float)
             room[~movable_mask] = 0.0
             # contribution to row i: -A[i,j] * room[j] for j with A[i,j] < 0
-            A_Ix = A[I_x]                       # (|I_x|, n)
+            A_Ix = A[I_x]  # (|I_x|, n)
             neg_part = np.where(A_Ix < 0, A_Ix, 0.0)
-            max_inc = -(neg_part @ room)        # length |I_x|
+            max_inc = -(neg_part @ room)  # length |I_x|
             new_y = y_main[I_x] + max_inc
             if (new_y < -EPS).any():
                 stats["kh_prunes"] += 1
@@ -173,8 +178,8 @@ def lattice_search(
 
         # --- КПП (2.13) ordering ---
         if use_kpp and len(cands) > 1 and I_x.size:
-            A_Ix = A[I_x]                       # (|I_x|, n)
-            col_sum = A_Ix.sum(axis=0)          # (n,)
+            A_Ix = A[I_x]  # (|I_x|, n)
+            col_sum = A_Ix.sum(axis=0)  # (n,)
             scores = [(box.high[j] - x[j]) * col_sum[j] for j in cands]
             cands = [j for _, j in sorted(zip(scores, cands))]
 

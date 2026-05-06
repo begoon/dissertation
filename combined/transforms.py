@@ -27,25 +27,33 @@ class Canonical:
     """Both canonical forms plus the inverse-decode metadata."""
 
     # ----- shared: what was done to the input -----
-    flipped_max_to_min: bool                    # whether c was negated up front
-    flipped_vars: np.ndarray                    # bool, len original n; True iff x[j] = h[j] - x^p[j] applied
-    perm: np.ndarray                            # int, len n; perm[j_new] = j_old (after the sort)
-    h_orig: np.ndarray                          # original h, before perm
+    flipped_max_to_min: bool  # whether c was negated up front
+    flipped_vars: (
+        np.ndarray
+    )  # bool, len original n; True iff x[j] = h[j] - x^p[j] applied
+    perm: np.ndarray  # int, len n; perm[j_new] = j_old (after the sort)
+    h_orig: np.ndarray  # original h, before perm
 
     # ----- (2.17) form for the lattice -----
-    c_p: np.ndarray                             # shape (n,)
-    A_p: np.ndarray                             # shape (m_p, n)
-    b_p: np.ndarray                             # shape (m_p,)
-    h_p: np.ndarray                             # shape (n,) integer
+    c_p: np.ndarray  # shape (n,)
+    A_p: np.ndarray  # shape (m_p, n)
+    b_p: np.ndarray  # shape (m_p,)
+    h_p: np.ndarray  # shape (n,) integer
 
     # ----- (2.19) form for the LP -----
     # min c_l_for_min · x_l (we'll feed scipy as min; it's c^p padded with zeros for slacks).
-    A_l: np.ndarray                             # shape (m, n + m)  — n structural + m slacks (one per original row)
-    b_l: np.ndarray                             # shape (m,)
-    h_l: np.ndarray                             # shape (n + m,) — slacks have effectively-infinite upper bound
-    c_l_for_min: np.ndarray                     # shape (n + m,) — c^p in first n positions, 0 in slack positions
-    row_sense: list[str]                        # original senses of the m rows (for reference)
-    n_struct: int                               # = original n (= len(c_p))
+    A_l: (
+        np.ndarray
+    )  # shape (m, n + m)  — n structural + m slacks (one per original row)
+    b_l: np.ndarray  # shape (m,)
+    h_l: (
+        np.ndarray
+    )  # shape (n + m,) — slacks have effectively-infinite upper bound
+    c_l_for_min: (
+        np.ndarray
+    )  # shape (n + m,) — c^p in first n positions, 0 in slack positions
+    row_sense: list[str]  # original senses of the m rows (for reference)
+    n_struct: int  # = original n (= len(c_p))
 
 
 def canonicalize(p: MILP) -> Canonical:
@@ -78,7 +86,7 @@ def canonicalize(p: MILP) -> Canonical:
         c0[flipped_vars] = -c0[flipped_vars]
 
     # 3. Sort variables ascending by c0.
-    perm = np.argsort(c0, kind="stable")        # perm[j_new] = j_old
+    perm = np.argsort(c0, kind="stable")  # perm[j_new] = j_old
     c_sorted = c0[perm]
     A_sorted = A0[:, perm]
     h_sorted = h0[perm]
@@ -88,15 +96,17 @@ def canonicalize(p: MILP) -> Canonical:
     # For sense '>=':  Σ a x - s = b,  s ≥ 0
     # For sense '=':                                   s coefficient = 0 (or no slack at all)
     slack_coefs = np.zeros((m, m))
-    slack_h = np.full(m, 1e18)                  # effectively-∞ upper bound for the LP slack
+    slack_h = np.full(m, 1e18)  # effectively-∞ upper bound for the LP slack
     for i, s in enumerate(p.sense):
         if s == "<=":
             slack_coefs[i, i] = 1.0
         elif s == ">=":
             slack_coefs[i, i] = -1.0
         elif s == "=":
-            slack_coefs[i, i] = 0.0             # slack column is all zeros — slack is dummy
-            slack_h[i] = 0.0                    # pin to zero
+            slack_coefs[i, i] = (
+                0.0  # slack column is all zeros — slack is dummy
+            )
+            slack_h[i] = 0.0  # pin to zero
         else:
             raise ValueError(f"unknown sense {s!r}")
     A_l = np.hstack([A_sorted, slack_coefs])
@@ -111,12 +121,16 @@ def canonicalize(p: MILP) -> Canonical:
         ai = A_sorted[i]
         bi = b0[i]
         if s == "<=":
-            rows_a.append(ai); rows_b.append(bi)
+            rows_a.append(ai)
+            rows_b.append(bi)
         elif s == ">=":
-            rows_a.append(-ai); rows_b.append(-bi)
+            rows_a.append(-ai)
+            rows_b.append(-bi)
         elif s == "=":
-            rows_a.append(ai);  rows_b.append(bi)
-            rows_a.append(-ai); rows_b.append(-bi)
+            rows_a.append(ai)
+            rows_b.append(bi)
+            rows_a.append(-ai)
+            rows_b.append(-bi)
     A_p = np.array(rows_a, dtype=float)
     b_p = np.array(rows_b, dtype=float)
     h_p = h_sorted.astype(np.int64)

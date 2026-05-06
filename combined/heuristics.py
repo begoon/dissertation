@@ -15,8 +15,9 @@ from scipy.optimize import LinearConstraint, Bounds, milp
 from combined.transforms import Canonical
 
 
-def scipy_milp_heuristic(x_opt_l: np.ndarray, can: Canonical,
-                         time_limit: float = 60.0) -> Optional[np.ndarray]:
+def scipy_milp_heuristic(
+    x_opt_l: np.ndarray, can: Canonical, time_limit: float = 60.0
+) -> Optional[np.ndarray]:
     """Use scipy.optimize.milp to produce an integer feasible quickly.
 
     This is a *heuristic* in the dissertation sense: it does not exploit the
@@ -29,8 +30,13 @@ def scipy_milp_heuristic(x_opt_l: np.ndarray, can: Canonical,
     bounds = Bounds(np.zeros(n), can.h_p.astype(float))
     integrality = np.ones(n)
 
-    res = milp(c=can.c_p, constraints=constraints, integrality=integrality,
-               bounds=bounds, options={"time_limit": time_limit})
+    res = milp(
+        c=can.c_p,
+        constraints=constraints,
+        integrality=integrality,
+        bounds=bounds,
+        options={"time_limit": time_limit},
+    )
     if res.x is None:
         return None
     x = np.round(res.x).astype(np.int64)

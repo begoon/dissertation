@@ -47,8 +47,8 @@ def build(zero_means_infinity: bool = True) -> MILP:
 
 def _build_from_dict(data: dict, zero_means_infinity: bool = True) -> MILP:
     m_rooms = int(data["rooms"])
-    S = int(data["central_commutator"]) - 1                  # 1-based → 0-based
-    KP_orig = np.array(data["users_per_room"], dtype=int)    # KP[v] for v=0..m-1
+    S = int(data["central_commutator"]) - 1  # 1-based → 0-based
+    KP_orig = np.array(data["users_per_room"], dtype=int)  # KP[v] for v=0..m-1
     c_k = float(data["hub_cost"])
     a = int(data["ports_per_hub"])
     cost = np.array(data["cable_costs"], dtype=float)
@@ -56,7 +56,7 @@ def _build_from_dict(data: dict, zero_means_infinity: bool = True) -> MILP:
     # Apply the dissertation's KP[S] = -KPS trick.
     KPS = int(KP_orig.sum())
     KP = KP_orig.copy()
-    KP[S] = -KPS                                             # ЦК absorbs all traffic
+    KP[S] = -KPS  # ЦК absorbs all traffic
 
     # ---- build arc set D -----------------------------------------------------
     arcs: list[tuple[int, int]] = []
@@ -65,14 +65,14 @@ def _build_from_dict(data: dict, zero_means_infinity: bool = True) -> MILP:
             if u == v:
                 continue
             if zero_means_infinity and cost[u, v] == 0:
-                continue                             # treat 0 off-diag as no cable
+                continue  # treat 0 off-diag as no cable
             arcs.append((u, v))
     n_arcs = len(arcs)
     arc_index = {arc: idx for idx, arc in enumerate(arcs)}
 
     # in / out arc lists per vertex
-    D_in: list[list[int]] = [[] for _ in range(m_rooms)]    # arcs INTO v
-    D_out: list[list[int]] = [[] for _ in range(m_rooms)]   # arcs OUT OF v
+    D_in: list[list[int]] = [[] for _ in range(m_rooms)]  # arcs INTO v
+    D_out: list[list[int]] = [[] for _ in range(m_rooms)]  # arcs OUT OF v
     for d_idx, (u, v) in enumerate(arcs):
         D_out[u].append(d_idx)
         D_in[v].append(d_idx)
@@ -83,14 +83,19 @@ def _build_from_dict(data: dict, zero_means_infinity: bool = True) -> MILP:
     # block 3: y[v] for v ∈ V (all vertices)   indices [2 n_arcs, 2 n_arcs + m_rooms)
     n = 2 * n_arcs + m_rooms
 
-    def x_idx(d_idx: int) -> int: return d_idx
-    def z_idx(d_idx: int) -> int: return n_arcs + d_idx
-    def y_idx(v: int) -> int: return 2 * n_arcs + v
+    def x_idx(d_idx: int) -> int:
+        return d_idx
+
+    def z_idx(d_idx: int) -> int:
+        return n_arcs + d_idx
+
+    def y_idx(v: int) -> int:
+        return 2 * n_arcs + v
 
     var_names = (
-        [f"x[{u},{v}]" for (u, v) in arcs] +
-        [f"z[{u},{v}]" for (u, v) in arcs] +
-        [f"y[{v}]"     for v in range(m_rooms)]
+        [f"x[{u},{v}]" for (u, v) in arcs]
+        + [f"z[{u},{v}]" for (u, v) in arcs]
+        + [f"y[{v}]" for v in range(m_rooms)]
     )
 
     # ---- objective: min Σ c[d] z[d] + Σ c_k y[v] -----------------------------
@@ -119,14 +124,18 @@ def _build_from_dict(data: dict, zero_means_infinity: bool = True) -> MILP:
             row[x_idx(d_idx)] += 1.0
         for d_idx in D_out[v]:
             row[x_idx(d_idx)] -= 1.0
-        rows_A.append(row.tolist()); rows_b.append(float(KP[v])); rows_sense.append(">=")
+        rows_A.append(row.tolist())
+        rows_b.append(float(KP[v]))
+        rows_sense.append(">=")
 
     # (1.9) x[d] ≤ KPS · z[d]    ⇔    x[d] - KPS · z[d] ≤ 0    ∀ d ∈ D
     for d_idx in range(n_arcs):
         row = np.zeros(n)
         row[x_idx(d_idx)] = 1.0
         row[z_idx(d_idx)] = -float(KPS)
-        rows_A.append(row.tolist()); rows_b.append(0.0); rows_sense.append("<=")
+        rows_A.append(row.tolist())
+        rows_b.append(0.0)
+        rows_sense.append("<=")
 
     # (1.10) a · y[v] ≥ KP[v] + Σ_{d∈D_v^-} z[d] - 1
     #        ⇔   a · y[v] - Σ z[d] ≥ KP[v] - 1   (only meaningful where KP[v] >= 1)
@@ -141,7 +150,9 @@ def _build_from_dict(data: dict, zero_means_infinity: bool = True) -> MILP:
         for d_idx in D_out[v]:
             row[z_idx(d_idx)] -= 1.0
         rhs = float(KP_orig[v] - 1)
-        rows_A.append(row.tolist()); rows_b.append(rhs); rows_sense.append(">=")
+        rows_A.append(row.tolist())
+        rows_b.append(rhs)
+        rows_sense.append(">=")
 
     # (1.11) y[v] ≤ Σ_{d∈D_v^-} x[d] + KP[v] - 1
     #        ⇔   y[v] - Σ x[d] ≤ KP[v] - 1
@@ -155,7 +166,9 @@ def _build_from_dict(data: dict, zero_means_infinity: bool = True) -> MILP:
         for d_idx in D_out[v]:
             row[x_idx(d_idx)] -= 1.0
         rhs = float(KP_orig[v] - 1)
-        rows_A.append(row.tolist()); rows_b.append(rhs); rows_sense.append("<=")
+        rows_A.append(row.tolist())
+        rows_b.append(rhs)
+        rows_sense.append("<=")
 
     A = np.array(rows_A, dtype=float)
     b = np.array(rows_b, dtype=float)
@@ -177,11 +190,16 @@ def _build_from_dict(data: dict, zero_means_infinity: bool = True) -> MILP:
             bound = 0
         else:
             bound = (int(KP_orig[v]) + (m_rooms - 1) - 1) // max(a - 2, 1) + 1
-        h[y_idx(v)] = max(1, bound)            # at least 1 so the LP has room
+        h[y_idx(v)] = max(1, bound)  # at least 1 so the LP has room
 
     return MILP(
-        c=c, A=A, b=b, sense=rows_sense, h=h,
-        direction="min", var_names=var_names,
+        c=c,
+        A=A,
+        b=b,
+        sense=rows_sense,
+        h=h,
+        direction="min",
+        var_names=var_names,
     )
 
 

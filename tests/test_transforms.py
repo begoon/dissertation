@@ -19,7 +19,7 @@ def test_simple_min_no_flips() -> None:
     )
     can = canonicalize(p)
     assert (can.c_p >= 0).all()
-    assert np.allclose(can.c_p, [3.0, 5.0])           # already ascending
+    assert np.allclose(can.c_p, [3.0, 5.0])  # already ascending
     # Original >=  becomes <= after sign flip in (2.17) form
     assert can.A_p.shape == (1, 2)
     assert np.allclose(can.A_p, [[-2.0, -4.0]])
@@ -44,7 +44,10 @@ def test_max_with_negative_coef() -> None:
     )
     can = canonicalize(p)
     assert can.flipped_max_to_min is True
-    assert can.flipped_vars.tolist() == [False, True]    # only the flipped-min coef was -1 (= old c[1] negated)
+    assert can.flipped_vars.tolist() == [
+        False,
+        True,
+    ]  # only the flipped-min coef was -1 (= old c[1] negated)
     # Wait — after max→min, c becomes (+2, -1). The flipped-vars step then negates
     # the negative one (index 1).  Test:
     assert (can.c_p >= 0).all()

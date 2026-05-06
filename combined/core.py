@@ -19,7 +19,7 @@ from combined.model import MILP
 from combined.transforms import Canonical, canonicalize, decode
 
 EPS = 1e-9
-LATTICE_NODE_LIMIT = 10_000_000                 # safety net
+LATTICE_NODE_LIMIT = 10_000_000  # safety net
 
 
 @dataclass
@@ -33,11 +33,17 @@ class StageStats:
 
 @dataclass
 class Result:
-    status: str                                 # "optimal", "suboptimal_within_eps", "infeasible", "node_limit"
-    x: Optional[np.ndarray] = None              # solution in user variable order, or None
-    objective: Optional[float] = None           # in user min/max sense
-    z_sub: Optional[float] = None               # Stage-2 sub-optimum objective (in min/(2.17) sense)
-    z_lp: Optional[float] = None                # Stage-1 LP optimum (in min/(2.17) sense)
+    # Status: "optimal", "best_within_budget", "suboptimal_within_eps",
+    # "infeasible", "unbounded", "error", or "initialising".
+    status: str
+    # Solution in user variable order (None if no feasible).
+    x: Optional[np.ndarray] = None
+    # Objective in user min/max sense.
+    objective: Optional[float] = None
+    # Stage-2 sub-optimum objective, in (2.17) min sign.
+    z_sub: Optional[float] = None
+    # Stage-1 LP optimum, in (2.17) min sign.
+    z_lp: Optional[float] = None
     stage_stats: dict[str, StageStats] = field(default_factory=dict)
     log: list[str] = field(default_factory=list)
 
@@ -48,31 +54,42 @@ HeuristicFn = Callable[[np.ndarray, "Canonical"], Optional[np.ndarray]]
 
 def combined_method(
     p: MILP,
-    eps: Optional[float] = None,                # relative tolerance in % (eq. 2.27); if hit, stop after Stage 2
+    eps: Optional[float] = None,
     heuristic: Optional[HeuristicFn] = None,
     use_kpp: bool = True,
     verbose: bool = False,
-    node_limit: Optional[int] = None,           # per-lattice-call cap; default LATTICE_NODE_LIMIT
+    node_limit: Optional[int] = None,
 ) -> Result:
-    """Solve the user MILP via the Combined Method."""
+    """Solve the user MILP via the Combined Method.
+
+    eps          relative tolerance in % (eq. 2.27); if hit, stop after Stage 2.
+    heuristic    optional Stage-2 plug-in (§2.4); see combined.heuristics.
+    use_kpp      enable КПП candidate ordering inside the lattice search.
+    verbose      print per-stage progress to stdout while running.
+    node_limit   per-lattice-call node cap; defaults to LATTICE_NODE_LIMIT.
+    """
     res = Result(status="initialising")
 
     def log_line(msg: str) -> None:
         res.log.append(msg)
         if verbose:
             print(msg, flush=True)
+
     log = res.log  # kept for back-compat; new code calls log_line()
 
     # ----- §3   Build canonical forms (2.17) and (2.19) -----
     can = canonicalize(p)
     n = can.n_struct
-    log_line(f"[setup] n={n}, m_p={can.A_p.shape[0]}, m_l={can.A_l.shape[0]}, "
-               f"flipped={int(can.flipped_vars.sum())}")
+    log_line(
+        f"[setup] n={n}, m_p={can.A_p.shape[0]}, m_l={can.A_l.shape[0]}, "
+        f"flipped={int(can.flipped_vars.sum())}"
+    )
 
     # ----- Stage 1 ----- LP relaxation of (2.19), in (2.17) sign
     t = time.perf_counter()
-    lp = solve_lp_min(can.c_p, can.A_p_for_lp(), can.b_p_for_lp(),
-                      can.sense_for_lp(), can.h_p)
+    lp = solve_lp_min(
+        can.c_p, can.A_p_for_lp(), can.b_p_for_lp(), can.sense_for_lp(), can.h_p
+    )
     s1 = StageStats()
     s1.wall_seconds = time.perf_counter() - t
     res.stage_stats["stage1_lp"] = s1
@@ -98,8 +115,12 @@ def combined_method(
     # If LP solution happens to be integer and feasible for (2.17), we are done.
     x_round = np.round(x_opt_l).astype(np.int64)
     integral = np.allclose(x_opt_l, x_round, atol=1e-7)
-    if integral and (can.A_p @ x_round <= can.b_p + 1e-7).all() and \
-       (x_round >= 0).all() and (x_round <= can.h_p).all():
+    if (
+        integral
+        and (can.A_p @ x_round <= can.b_p + 1e-7).all()
+        and (x_round >= 0).all()
+        and (x_round <= can.h_p).all()
+    ):
         log_line("[stage1] LP optimum is integer feasible — done.")
         res.status = "optimal"
         res.x = decode(x_round, can)
@@ -114,6 +135,8 @@ def combined_method(
     log_line(f"[stage1] x_min_p = {x_min_p.tolist()}")
 
     # ----- Stage 2 ----- search for sub-optimal feasible
+    nlim = node_limit if node_limit is not None else LATTICE_NODE_LIMIT
+    progress = 100_000 if verbose else None
     t = time.perf_counter()
     box = Box(low=x_min_p.copy(), high=can.h_p.copy())
     s2 = StageStats()
@@ -126,20 +149,30 @@ def combined_method(
             x_h = heuristic(x_opt_l, can)
             if x_h is not None and _is_feasible(x_h, can):
                 x_D_p = x_h.astype(np.int64)
-                log_line(f"[stage2] heuristic produced feasible, c·x = {can.c_p @ x_D_p:.6f}")
-        except Exception as e:                  # don't let heuristic crashes kill the run
+                log_line(
+                    f"[stage2] heuristic produced feasible, c·x = {can.c_p @ x_D_p:.6f}"
+                )
+        except Exception as e:  # don't let heuristic crashes kill the run
             log_line(f"[stage2] heuristic raised {e!r}; falling back")
 
     # 2.1.1 — initial enumeration in [x_min^p, h^p]
     if x_D_p is None:
-        x_D_p, st = lattice_search(can.A_p, can.b_p, can.c_p, box,
-                                   filt=None, use_kpp=use_kpp,
-                                   node_limit=node_limit if node_limit is not None else LATTICE_NODE_LIMIT,
-                                   progress_every=100_000 if verbose else None,
-                                   progress_label="stage2.1.1")
+        x_D_p, st = lattice_search(
+            can.A_p,
+            can.b_p,
+            can.c_p,
+            box,
+            filt=None,
+            use_kpp=use_kpp,
+            node_limit=nlim,
+            progress_every=progress,
+            progress_label="stage2.1.1",
+        )
         _accumulate(s2, st)
-        log_line(f"[stage2.1.1] lattice nodes={st['nodes']}, "
-                   f"kh={st['kh_prunes']}, found={x_D_p is not None}")
+        log_line(
+            f"[stage2.1.1] lattice nodes={st['nodes']}, "
+            f"kh={st['kh_prunes']}, found={x_D_p is not None}"
+        )
 
     # 2.1.2 — slice expansion if no feasible found yet
     excluded: set[int] = set()
@@ -161,19 +194,31 @@ def combined_method(
 
         # Try the slice with x[k] = box.low[k] - 1
         new_v = int(box.low[k] - 1)
-        slice_box = Box(low=box.low.copy(), high=box.high.copy(),
-                        fixed_var=k, fixed_val=new_v)
-        slice_box.low[k] = new_v               # so the lex/КН logic sees x[k] >= new_v
-        slice_box.high[k] = new_v              # and ≤ new_v — i.e. exactly new_v
+        slice_box = Box(
+            low=box.low.copy(),
+            high=box.high.copy(),
+            fixed_var=k,
+            fixed_val=new_v,
+        )
+        slice_box.low[k] = new_v  # so the lex/КН logic sees x[k] >= new_v
+        slice_box.high[k] = new_v  # and ≤ new_v — i.e. exactly new_v
 
-        x_slice, st = lattice_search(can.A_p, can.b_p, can.c_p, slice_box,
-                                     filt=None, use_kpp=use_kpp,
-                                     node_limit=node_limit if node_limit is not None else LATTICE_NODE_LIMIT,
-                                     progress_every=100_000 if verbose else None,
-                                     progress_label=f"stage2.1.2 j={k}")
+        x_slice, st = lattice_search(
+            can.A_p,
+            can.b_p,
+            can.c_p,
+            slice_box,
+            filt=None,
+            use_kpp=use_kpp,
+            node_limit=nlim,
+            progress_every=progress,
+            progress_label=f"stage2.1.2 j={k}",
+        )
         _accumulate(s2, st)
-        log_line(f"[stage2.1.2] expand on j={k} to {new_v}: "
-                   f"nodes={st['nodes']}, found={x_slice is not None}")
+        log_line(
+            f"[stage2.1.2] expand on j={k} to {new_v}: "
+            f"nodes={st['nodes']}, found={x_slice is not None}"
+        )
 
         # If КН fired at the very first node, this variable cannot be expanded further.
         if st["nodes"] <= 1 and x_slice is None:
@@ -212,7 +257,9 @@ def combined_method(
             for i in range(can.A_p.shape[0]):
                 a = can.A_p[i, j]
                 if a < 0:
-                    d_cap = int(math.floor(y[i] / -a))  # y[i] + d*a ≥ 0 ⇒ d ≤ y[i]/-a
+                    d_cap = int(
+                        math.floor(y[i] / -a)
+                    )  # y[i] + d*a ≥ 0 ⇒ d ≤ y[i]/-a
                     if d_cap < d_max:
                         d_max = d_cap
             if d_max <= 0:
@@ -224,8 +271,10 @@ def combined_method(
             x_tilde[best_j] -= best_delta
             z_tilde -= best_gain
             improved = True
-    log_line(f"[stage2.2] after trivial improvement: z̃ = {z_tilde:.6f} "
-               f"(improvement = {z_D_p - z_tilde:.6f})")
+    log_line(
+        f"[stage2.2] after trivial improvement: z̃ = {z_tilde:.6f} "
+        f"(improvement = {z_D_p - z_tilde:.6f})"
+    )
 
     s2.wall_seconds = time.perf_counter() - t
     res.stage_stats["stage2"] = s2
@@ -251,14 +300,19 @@ def combined_method(
 
     # Candidate set J = vars not at LP lower bound (≈ 0). For the rest, x_min[j] = 0.
     candidates = [j for j in range(n) if x_opt_l[j] > 1e-7]
-    log_line(f"[stage3] solving {len(candidates)} per-variable LPs with filter rhs = {z_tilde:.6f}")
+    log_line(
+        f"[stage3] solving {len(candidates)} per-variable LPs with filter rhs = {z_tilde:.6f}"
+    )
 
     sense_p = ["<="] * can.A_p.shape[0]
     for j in candidates:
-        sub = solve_min_xj_with_filter(can.c_p, j, can.A_p, can.b_p, sense_p,
-                                       can.h_p, filter_rhs=z_tilde)
+        sub = solve_min_xj_with_filter(
+            can.c_p, j, can.A_p, can.b_p, sense_p, can.h_p, filter_rhs=z_tilde
+        )
         if sub.status != "optimal":
-            log_line(f"[stage3] per-var LP for j={j} status={sub.status}; assuming x_min[j]=0")
+            log_line(
+                f"[stage3] per-var LP for j={j} status={sub.status}; assuming x_min[j]=0"
+            )
             continue
         x_min[j] = int(math.ceil(sub.x[j] - 1e-7))
     log_line(f"[stage3] x_min = {x_min.tolist()}")
@@ -276,24 +330,35 @@ def combined_method(
     # says "D_min ⊂ D_min^p" — the two contradict each other and the ⊂ reading is
     # the algorithmically-correct one. We follow the prose.
     if (x_min >= x_min_p).all():
-        log_line("[stage4] x_min ≥ x_min_p ⇒ Stage-4 box ⊂ Stage-2 box; sub-opt is optimum")
+        log_line(
+            "[stage4] x_min ≥ x_min_p ⇒ Stage-4 box ⊂ Stage-2 box; sub-opt is optimum"
+        )
         x_opt_p = x_tilde
     else:
         if (x_min > can.h_p).any():
-            log_line("[stage4] x_min exceeds h^p ⇒ box empty; sub-opt is optimum")
+            log_line(
+                "[stage4] x_min exceeds h^p ⇒ box empty; sub-opt is optimum"
+            )
             x_opt_p = x_tilde
         else:
             box4 = Box(low=x_min.copy(), high=can.h_p.copy())
             filt = Filter(c=can.c_p.copy(), f_best=z_tilde)
-            effective_limit = node_limit if node_limit is not None else LATTICE_NODE_LIMIT
-            x_better, st = lattice_search(can.A_p, can.b_p, can.c_p, box4,
-                                          filt=filt, use_kpp=use_kpp,
-                                          node_limit=effective_limit,
-                                          progress_every=100_000 if verbose else None,
-                                          progress_label="stage4")
+            x_better, st = lattice_search(
+                can.A_p,
+                can.b_p,
+                can.c_p,
+                box4,
+                filt=filt,
+                use_kpp=use_kpp,
+                node_limit=nlim,
+                progress_every=progress,
+                progress_label="stage4",
+            )
             _accumulate(s4, st)
-            log_line(f"[stage4] lattice nodes={st['nodes']}, kh={st['kh_prunes']}, "
-                       f"kpia={st['kpia_prunes']}, found_better={x_better is not None}")
+            log_line(
+                f"[stage4] lattice nodes={st['nodes']}, kh={st['kh_prunes']}, "
+                f"kpia={st['kpia_prunes']}, found_better={x_better is not None}"
+            )
             if x_better is not None:
                 x_opt_p = x_better
             else:
@@ -301,14 +366,16 @@ def combined_method(
                 # If Stage 4 hit the node limit without finding an improvement,
                 # we cannot certify optimality — only that no better solution
                 # was found within budget.
-                if st["nodes"] >= effective_limit:
+                if st["nodes"] >= nlim:
                     res.status = "best_within_budget"
     s4.wall_seconds = time.perf_counter() - t
     res.stage_stats["stage4"] = s4
 
     # ----- Stage 5 ----- decode
     z_opt_p = float(can.c_p @ x_opt_p)
-    log_line(f"[stage5] z = {z_opt_p:.6f} (status: {res.status if res.status != 'initialising' else 'optimal'})")
+    log_line(
+        f"[stage5] z = {z_opt_p:.6f} (status: {res.status if res.status != 'initialising' else 'optimal'})"
+    )
     if res.status == "initialising":
         res.status = "optimal"
     res.x = decode(x_opt_p, can)
@@ -323,6 +390,7 @@ def combined_method(
 
 
 # ---------- helpers ----------
+
 
 def _accumulate(stats: StageStats, st: dict) -> None:
     stats.nodes += st["nodes"]
@@ -347,15 +415,19 @@ def _is_feasible(x: np.ndarray, can: Canonical) -> bool:
 # (c, A, b, sense, h) directly. We feed it the (2.17) shape (after canonicalize
 # all rows are ≤), so sense is just ["<="] * m_p.
 
+
 def _A_p_for_lp(self: Canonical) -> np.ndarray:
     return self.A_p
+
 
 def _b_p_for_lp(self: Canonical) -> np.ndarray:
     return self.b_p
 
+
 def _sense_for_lp(self: Canonical) -> list[str]:
     return ["<="] * self.A_p.shape[0]
 
-Canonical.A_p_for_lp = _A_p_for_lp        # type: ignore[attr-defined]
-Canonical.b_p_for_lp = _b_p_for_lp        # type: ignore[attr-defined]
-Canonical.sense_for_lp = _sense_for_lp    # type: ignore[attr-defined]
+
+Canonical.A_p_for_lp = _A_p_for_lp  # type: ignore[attr-defined]
+Canonical.b_p_for_lp = _b_p_for_lp  # type: ignore[attr-defined]
+Canonical.sense_for_lp = _sense_for_lp  # type: ignore[attr-defined]

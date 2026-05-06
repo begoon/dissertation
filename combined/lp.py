@@ -18,18 +18,20 @@ from scipy.optimize import linprog
 
 @dataclass
 class LPResult:
-    status: str                                 # "optimal", "infeasible", "unbounded"
-    x: Optional[np.ndarray] = None              # shape (n_struct,) — structural vars only
-    obj: Optional[float] = None                 # value of c · x in the *minimisation* sense
-    raw_x: Optional[np.ndarray] = None          # full vector incl. slacks (or whatever scipy returned)
+    status: str  # "optimal", "infeasible", "unbounded"
+    x: Optional[np.ndarray] = None  # shape (n_struct,) — structural vars only
+    obj: Optional[float] = None  # value of c · x in the *minimisation* sense
+    raw_x: Optional[np.ndarray] = (
+        None  # full vector incl. slacks (or whatever scipy returned)
+    )
 
 
 def solve_lp_min(
-    c: np.ndarray,                              # length n_struct  (no slacks)
-    A: np.ndarray,                              # shape (m, n_struct)  — main constraints, no slack columns
+    c: np.ndarray,  # length n_struct  (no slacks)
+    A: np.ndarray,  # shape (m, n_struct)  — main constraints, no slack columns
     b: np.ndarray,
     sense: list[str],
-    h: np.ndarray,                              # length n_struct, integer upper bounds
+    h: np.ndarray,  # length n_struct, integer upper bounds
 ) -> LPResult:
     """Minimise c · x subject to A x [<=,>=,=] b, 0 ≤ x ≤ h. Continuous."""
     n = c.shape[0]
@@ -58,13 +60,20 @@ def solve_lp_min(
 
     res = linprog(
         c=c,
-        A_ub=A_ub, b_ub=np.array(b_ub) if b_ub else None,
-        A_eq=A_eq, b_eq=np.array(b_eq) if b_eq else None,
+        A_ub=A_ub,
+        b_ub=np.array(b_ub) if b_ub else None,
+        A_eq=A_eq,
+        b_eq=np.array(b_eq) if b_eq else None,
         bounds=bounds,
         method="highs",
     )
     if res.status == 0:
-        return LPResult("optimal", x=np.asarray(res.x), obj=float(res.fun), raw_x=np.asarray(res.x))
+        return LPResult(
+            "optimal",
+            x=np.asarray(res.x),
+            obj=float(res.fun),
+            raw_x=np.asarray(res.x),
+        )
     if res.status == 2:
         return LPResult("infeasible")
     if res.status == 3:
@@ -73,13 +82,13 @@ def solve_lp_min(
 
 
 def solve_min_xj_with_filter(
-    c_filter: np.ndarray,                       # length n_struct  — c^p (used only inside the filter row)
+    c_filter: np.ndarray,  # length n_struct  — c^p (used only inside the filter row)
     j: int,
     A: np.ndarray,
     b: np.ndarray,
     sense: list[str],
     h: np.ndarray,
-    filter_rhs: float,                          # z̃_D^p — the filter row's RHS
+    filter_rhs: float,  # z̃_D^p — the filter row's RHS
 ) -> LPResult:
     """Solve  min x[j]  s.t. A x [sense] b  AND  c^p · x ≤ filter_rhs  AND  0 ≤ x ≤ h.
 
@@ -87,7 +96,7 @@ def solve_min_xj_with_filter(
     """
     n = c_filter.shape[0]
     obj = np.zeros(n)
-    obj[j] = 1.0                                # minimise x[j]
+    obj[j] = 1.0  # minimise x[j]
 
     # Append the filter row as a <= constraint
     A2 = np.vstack([A, c_filter[None, :]])
