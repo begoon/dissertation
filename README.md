@@ -632,11 +632,157 @@ uv run python scripts/bench.py --node-limit 500000 --include-large \
                                 --json bench-full.json
 ```
 
+## 12. Evaluation
+
+A balanced assessment of the dissertation as a whole, drawing on the
+extraction, the spec writing, the reimplementation, and the benchmark
+sweep.
+
+### What's good
+
+**The orchestration idea is genuinely clean.** Four stages, each with
+a defined role, with a single piece of state (`(z̃, x̃)` from Stage 2,
+the saved tableau from Stage 1) flowing forward. Easy to teach, easy
+to draw, easy to implement piece-by-piece. The four-stage shape
+generalises to other problem classes — anyone reading Chapter 2 walks
+away with a transferable mental model, not just one ILP solver.
+
+**The numerical-robustness argument vs. cutting planes is real.**
+Adding a single filter row once is fundamentally less prone to
+coefficient blow-up than the cumulative Gomory or MIR cuts that МПО
+stacks. The dissertation's framing — "no basis re-pivots accumulating
+error, no Gomory drift" — is the strongest *original* claim and it
+holds up.
+
+**The heuristic plug-in slot is well-architected.** Stage 2 can
+swallow any feasibility heuristic without affecting Stages 1, 3, or 4.
+Optimality is preserved no matter what the heuristic returns. We
+tested this: a heuristic returning an infeasible point or raising an
+exception both leave the result correct (`tests/test_core.py`).
+That contract is non-trivial to design and the dissertation gets it
+right.
+
+**КН pruning is sound and useful.** (2.9) is correctly stated and it
+does most of the work of cutting infeasible subtrees — across our
+bench, КН picked off ~20–95 % of nodes per run.
+
+**The empirical demonstration is concrete.** Showing the same
+instance solved in 6 hours by the Combined Method and not at all by
+МВГ / МПО / МНПВР standalone — that's exactly the kind of evidence
+a PhD defence needs. The Chapter-4 LAN-topology problem is real
+(РКК «Энергия»), not a synthetic test case.
+
+### What's technically off
+
+**КПП is "heuristic" in name only.** The dissertation labels (2.13)
+as a candidate-ordering heuristic with no effect on optimality.
+Formally true — but our benchmarks (§6.2) showed that *without* КПП
+the algorithm degrades from "complete method" to "depth-first scan
+that may report infeasibility on a feasible instance" (medium50
+returns the wrong answer in 83 s). The dissertation doesn't flag
+this dependency. Anyone implementing without КПП will think the
+algorithm is broken.
+
+**КПИА's stated form is too narrow.** (2.12) is checked once when
+building `J_x`. Our reimplementation initially copied this verbatim
+and was correct but very slow — `f_best` tightens during sibling
+recursions and КПИА must be re-checked per candidate iteration, not
+just per node. The dissertation pseudocode in §2.3 doesn't mention
+this; if you implement strictly to spec the LAN-B run is roughly
+10× slower than it could be.
+
+**One signed-inequality typo.** §2.3 step 5.1 literally writes
+`x_min ≤ x_min^p ⇒ skip` but justifies it with `D_min ⊂ D_min^p`,
+which requires the *opposite* inequality direction. Small, but a
+literal-implementation reader gets it wrong — and it changes
+correctness, not just performance.
+
+**Three OLE-equation export gaps in §2.3.1 / §2.3.2.** The
+simplex-tableau bordering formulae for adding the filter row and the
+warm-start formulae for the per-variable LPs. The Word equation
+export drops one piecewise branch and one tableau cell. Likely a
+Word/exporter problem rather than the author's, but these are
+exactly the formulae you need to implement Stage 3 efficiently.
+
+**The headline 280 doesn't reproduce.** This is the most serious
+one. We extracted the LAN-B numerical data exactly from §1.1.2.2,
+built the model exactly from §1.1.2.3, and got `z* = 320` —
+confirmed independently by `scipy.optimize.milp`. The dissertation
+says `z* = 280`. Either there's an undocumented constraint or
+upper-bound formula somewhere in §1.1.2.3, or the published numerical
+data doesn't match the instance the author actually solved. For an
+empirical-demonstration thesis, the headline number being
+unreplicable is a real issue — though probably a documentation gap
+rather than a method error.
+
+### What's missing from the comparison
+
+**No comparison against contemporaneous commercial MILP solvers.** In
+2002 CPLEX 8 was already shipping aggressive presolve plus
+branch-and-cut and would have eaten the LAN-B instance in seconds.
+The dissertation only compares against simpler hand-coded versions of
+МВГ, МПО, and МНПВР. "The Combined Method beats hand-coded B&B" is
+true but a much weaker claim than "the Combined Method is competitive
+with state-of-the-art ILP solvers". Modern HiGHS solves LAN-B in
+75 ms — about **280 000× faster** than the dissertation's
+Combined-Method result on the same instance.
+
+**No discussion of presolve.** Modern MILP wins much of its speed
+from presolve (variable elimination, bound tightening, redundant
+constraint removal). The Combined Method has none. The §4 reductions
+("drop variables with no users", "replace equalities with `≥`") are
+presolve-equivalents *for the LAN problem*, but they're not generic.
+
+**Variable count doesn't match the model.** The dissertation reports
+153 vars / 108 rows for LAN-B. We reproduce 153 vars (when
+interpreting off-diagonal zeros as zero cost) but only 97 rows. The
+11-row gap suggests another constraint we haven't captured.
+
+### Where it lands
+
+**As a PhD (Candidate of Technical Sciences) dissertation in 2002:**
+defensible and well-crafted. Real engineering: a working
+bounded-variable simplex, a working lattice enumerator, a real
+LAN-design instance, and a coherent four-stage orchestration. The
+kind of work that demonstrates the candidate can do non-trivial
+systems-level engineering, which is the bar.
+
+**As an original algorithmic contribution:** modest. Branch-and-cut
+had been the dominant MILP framework for a decade by 2002, and "use
+one method's output to seed another's search" was already a common
+pattern. The specific filter-row + lattice-search instantiation is
+novel; the meta-idea of combining methods is not. The "Combined
+Method" name is broader than the technical contribution.
+
+**As something useful today:** the algorithm itself isn't competitive
+with HiGHS / Gurobi on small-to-medium instances. But the *design
+pattern* — LP corner → small-box lattice search with a strict filter
+— is a legitimate way to think about ILP that someone learning the
+subject can build intuition from. And the heuristic plug-in slot is
+a clean architectural idea worth borrowing.
+
+**Replicability:** the algorithm replicates cleanly from §2.2–§2.3
+(modulo the issues we found). The headline benchmark instance does
+**not** replicate from §1.1.2.2–§1.1.2.3 alone. That's the biggest
+concrete shortcoming.
+
+### Verdict
+
+A solid 2002 engineering dissertation with a clean methodological
+skeleton, fair empirical work, and a few small documentation slips
+that an attentive reimplementer can route around. Not state-of-the-
+art ILP research even in its own era, but a good piece of pedagogy
+and a working, reproducible (in the algorithm sense) reference
+implementation of a defensible orchestration pattern. Worth reading
+for the four-stage shape; not worth using as a production solver.
+The Combined Method's most durable contribution is probably the
+heuristic-plug-in contract — that's the bit that ages best.
+
 ## License
 
 MIT — see [`LICENSE`](LICENSE).
 
-## 12. Summary
+## 13. Summary
 
 * The Combined Method *as an algorithm* is sound, with one small
   inequality-direction error in the dissertation's Stage 4 skip
