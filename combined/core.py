@@ -285,9 +285,10 @@ def combined_method(
         else:
             box4 = Box(low=x_min.copy(), high=can.h_p.copy())
             filt = Filter(c=can.c_p.copy(), f_best=z_tilde)
+            effective_limit = node_limit if node_limit is not None else LATTICE_NODE_LIMIT
             x_better, st = lattice_search(can.A_p, can.b_p, can.c_p, box4,
                                           filt=filt, use_kpp=use_kpp,
-                                          node_limit=node_limit if node_limit is not None else LATTICE_NODE_LIMIT,
+                                          node_limit=effective_limit,
                                           progress_every=100_000 if verbose else None,
                                           progress_label="stage4")
             _accumulate(s4, st)
@@ -297,13 +298,19 @@ def combined_method(
                 x_opt_p = x_better
             else:
                 x_opt_p = x_tilde
+                # If Stage 4 hit the node limit without finding an improvement,
+                # we cannot certify optimality — only that no better solution
+                # was found within budget.
+                if st["nodes"] >= effective_limit:
+                    res.status = "best_within_budget"
     s4.wall_seconds = time.perf_counter() - t
     res.stage_stats["stage4"] = s4
 
     # ----- Stage 5 ----- decode
     z_opt_p = float(can.c_p @ x_opt_p)
-    log_line(f"[stage5] optimum z = {z_opt_p:.6f}")
-    res.status = "optimal"
+    log_line(f"[stage5] z = {z_opt_p:.6f} (status: {res.status if res.status != 'initialising' else 'optimal'})")
+    if res.status == "initialising":
+        res.status = "optimal"
     res.x = decode(x_opt_p, can)
     sign = -1.0 if can.flipped_max_to_min else 1.0
     res.objective = sign * float(p.c @ res.x)
